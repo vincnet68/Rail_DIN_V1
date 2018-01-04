@@ -1,4 +1,5 @@
 /* Version du 01/04/2017
+
  * SKETCH fonctionnant sur wemos D1 MINI POUR COMMANDE DE VOLET ROULANT FILAIRE AVEC RENVOI DE LA POSITION DU VOLET EN POURCENTAGE
  * HARD : https://www.jeedom.com/forum/viewtopic.php?f=185&t=25017&sid=c757bad46d600f07820dab2a45ec8b33
  * LIBRAIRIES : https://github.com/marvinroger/arduino-shutters
@@ -40,17 +41,8 @@ const float calibrationRatio = 0.1;
 char ESP8266Client[20]  = "VR_Empty"; //Default
 int doubleLongPressStart = 0; //Time during double long press
 
-			
-			
-			 
-			 
-				
-				
-				 
-				 
-
 //Wifimanager 
-				 
+         
 //flag for saving data
 bool shouldSaveConfig = false;
 //callback notifying us of the need to save config
@@ -58,7 +50,6 @@ void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
 }
-
 
 // NOMAGE MQTT
 //#define relais1_topic "/Relais1"
@@ -95,6 +86,7 @@ OneButton button2(In2pin, true);
 // VARIABLES
 //POSITION
 const char* cmdnamePos = "Position";
+
 char message_buff[100];
 
 WiFiClient espClientVR_Test;  // A renommer pour chaque volets
@@ -107,19 +99,15 @@ void shuttersOperationHandler(Shutters* s, ShuttersOperation operation) {
   switch (operation) {
     case ShuttersOperation::UP:
       if (debug){Serial.println("Shutters going up.");}
-        up();
-				 
+        up();       
       break;
     case ShuttersOperation::DOWN:
   if (debug){Serial.println("Shutters going down.");}
-
         dwn();
-				 
       break;
     case ShuttersOperation::HALT:
       if (debug){Serial.println("Shutters halting.");}
         stp();
-					
       break;
   }
 }
@@ -148,7 +136,7 @@ void onShuttersLevelReached(Shutters* shutters, byte level) {
   if ((level % 10) == 0) {
   mqttlevel();  
   }
-  }
+}
 
 Shutters shutters;
 //
@@ -167,28 +155,8 @@ void setup() {
   #endif
   Serial.println();
   Serial.println("*** Starting ***");
+  Serial.println(ESP8266Client);                
 
-  Serial.println(ESP8266Client);								
-  
-							   
-							   
-								 
-								 
-						
-						
-						  
-						  
-			 
-							
-						   
-							
-						   
-							 
-							
-							 
-							
-   
-	 
 if (raz){
   Serial.println("Réinitialisation de la configuration (reset SPIFFS).");
   SPIFFS.format();
@@ -240,8 +208,8 @@ if (raz){
   wifiManager.addParameter(&custom_timeCourse_up);
   wifiManager.addParameter(&custom_timeCourse_down);
   wifiManager.addParameter(&custom_ESP8266Client);
+
   wifiManager.autoConnect(ESP8266Client, PASS);
-  }
 
 //reset settings - for testing
 if (raz){
@@ -330,10 +298,7 @@ if (raz){
   pinMode(R2pin, OUTPUT);
   digitalWrite(R1Pin, 0);
   digitalWrite(R2pin, 0);
-      
-								
 
-	
   char storedShuttersState[shutters.getStateLength()];
   readInEeprom(storedShuttersState, shutters.getStateLength());
   shutters
@@ -360,9 +325,12 @@ if (raz){
 
   Serial.print("storedShuttersState :"); 
   Serial.println(storedShuttersState);  
+
   Serial.println("Shutter Begin");
   digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready
 }
+
+
 
 //***********************************************************************************
 // FONCTION Reset + Format memoire ESP
@@ -375,7 +343,6 @@ if (debug){Serial.println("Réinitialisation de la configuration (reset SPIFFS).
 ESP.reset();
 }
 
-																					 
 // FONCTION communication MQTT JEEDOM VERS ESP
 void callback(char* topic, byte* payload, unsigned int length) {
   int i = 0;
@@ -405,7 +372,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if ( msgString == "stp" ){
     shutters.stop();  
   } else if ( msgString == "raz" ){
-	eraz();
+  eraz();
   }
 }
 
@@ -414,7 +381,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void reconnect() { 
   // Loop until we're reconnected
   long now1 = millis();
-	if (debug){		 
+  if (debug){    
     Serial.print("Attente de connexion MQTT...");}
     // Attempt to connect
     if (client.connect(ESP8266Client)) {
@@ -427,11 +394,9 @@ void reconnect() {
       // ... and resubscribe
       client.subscribe(JeedomOut_topic);
     } else {
-	if (debug){		 
+  if (debug){    
       Serial.print("Erreur, rc=");
-      Serial.print(client.state());
-														 
-									   
+      Serial.print(client.state());}               
     }
   }
 
@@ -439,44 +404,18 @@ void reconnect() {
 // LOOP
 void loop(void){
   unsigned long currentMillis = millis();
-							 
-							 
-							   
-							   
-
   unsigned long now = millis();
   //Serial.println(" now :");
   //Serial.println(now);
+
   if (now - lastMsg > 5000) {
     //Serial.println(" now :");
     //Serial.println(now);
     lastMsg = now;
     if (!client.connected()) {
       if (debug){Serial.println("client reconnexion");}
-      reconnect();
-	  
-  
-							
-													  
-		   
-						
- 
-							
-													  
-		   
-						
-  
-							  
-													   
-		  
-			
-						  
-    }
-							  
-													   
-		  
-			
-						  
+      reconnect();       
+    }         
   }
   ArduinoOTA.handle();
   client.loop();
@@ -491,19 +430,7 @@ void loop(void){
     if (doubleLongPressStart > 10*1000) //More the 10 second long Press
     {
       shutters.stop();
-      //Here should enable the wifiManager
-     if (!wifiManager.startConfigPortal(ESP8266Client))
-     {
-        Serial.println("failed to connect and hit timeout");
-        delay(3000);
-        //reset and try again, or maybe put it to deep sleep
-     }
-     else
-     {
-        Serial.println("WifiConfig OK");
-     }
-     ESP.reset();
-     delay(5000);
+     eraz();
     }
  }
   else
@@ -514,17 +441,21 @@ void loop(void){
 // FONCTION MQTT ESP VERS JEEDOM
 void mqttPublish(char* topic, char* value)
 {
-	 if (!client.connected()) {
+   if (!client.connected()) {
     reconnect();
   }
   else {  
     if (debug){
     Serial.print("envoi MQTT");
-	Serial
+  Serial.print(topic);
+  Serial.print(" : ");
+  Serial.println(value);
     }
-	 String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(position_topic);
-    client.publish(string2char(topicString), level);
+   String topicString = String();
+    topicString = String(prefix_topic) + String(ESP8266Client) + String(topic);
+    client.publish(string2char(topicString), value);
+  }
+}
 void mqttInit(){
   char level[4];
   int levelInt;
@@ -535,26 +466,10 @@ void mqttInit(){
     reconnect();
   }
   else {  
-			   
-								  
-						   
-  
-									   
- 
- 
-
-			  
-				
-										   
-						  
-				
-   
-		
     if (debug){
-    Serial.println("envoi MQTT");
+    Serial.println("envoi MQTT d'initialisation");
     }
-    String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(position_topic);
+    mqttPublish(position_topic, level);
     client.publish(string2char(topicString), level);
   topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpClick_topic);
   client.publish(string2char(topicString), CONST_FALSE);
@@ -563,29 +478,12 @@ void mqttInit(){
   topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpDblClick_topic);
   client.publish(string2char(topicString), CONST_FALSE);
   topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownClick_topic);
-   
-		
-		   
-								   
-						   
-  
   client.publish(string2char(topicString), CONST_FALSE);
   topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownLongClick_topic);
   client.publish(string2char(topicString), CONST_FALSE);
   topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownDblClick_topic);
   client.publish(string2char(topicString), CONST_FALSE);
-				
-											
-						  
-				
-   
-		
-		   
-								   
-						   
  }
-									   
- 
 }
 
 void mqttlevel(){
@@ -601,38 +499,28 @@ if (debug){
  }
      client.publish(position_topic, level);
  }
-}	
+} 
 
 //***********************************************************************************
 // FONCTIONS MOUVEMENTS VOLET
 void up(){
   digitalWrite(R1Pin, 1);
   digitalWrite(R2pin, 0);
-											   
-  
-  }
+ }
 
 void dwn(){
   digitalWrite(R1Pin, 0);
   digitalWrite(R2pin, 1);
-												
   }
 
 void stp(){
   digitalWrite(R1Pin, 0);
   digitalWrite(R2pin, 0);
-												
   }
   
 
 //***********************************************************************************
 //FONCTION SORTIES RELAIS EN FONCTION DES ENTREES POUR COMMANDE LOCAL
-			 
-	
-									
-											  
-										
-
 // ----- button 1 callback functions
 // This function will be called when the button1 was pressed 1 time (and no 2. button press followed).
 void click1() {
@@ -643,19 +531,18 @@ void click1() {
       shutters.stop();
     }
    else{
- if (debug){
-      Serial.print("Click Up Shutter Up" );
-								 
- }
-          if (shutters.getCurrentLevel() != 100){
-      shutters.setLevel(100);
-   }
+     if (debug){
+          Serial.print("Click Up Shutter Up" );
+     }
+              if (shutters.getCurrentLevel() != 100){
+    
+          shutters.setLevel(100);
+     }
    }
    String topicString = String();
     topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpClick_topic);
     client.publish(string2char(topicString), CONST_TRUE);
 } // click1
-
 
 // This function will be called when the button1 was pressed 2 times in a short timeframe.
 void doubleclick1() {
@@ -665,7 +552,6 @@ void doubleclick1() {
     client.publish(string2char(topicString), CONST_TRUE);
 } // doubleclick1
 
-
 // This function will be called once, when the button1 is pressed for a long time.
 void longPressStart1() {
   Serial.println("Button 1 longPress start");
@@ -674,27 +560,22 @@ void longPressStart1() {
     client.publish(string2char(topicString), CONST_TRUE);
 } // longPressStart1
 
-
 // This function will be called often, while the button1 is pressed for a long time.
 void longPress1() {
   Serial.println("Button 1 longPress...");
 } // longPress1
-
-
-
 
 // This function will be called once, when the button1 is released after beeing pressed for a long time.
 void longPressStop1() {
   Serial.println("Button 1 longPress stop");
 } // longPressStop1
 
-
 // ... and the same for button 2:
 
 void click2() {
  if (shutters.isIdle()){
     if (debug){
-								 
+                 
       Serial.print("Click Down Shutter Idle" );    ;
     }
       shutters.stop();
@@ -702,7 +583,7 @@ void click2() {
    else{
  if (debug){
       Serial.print("Click Down Shutter Down" );    ;
-								 
+                 
     }
           if (shutters.getCurrentLevel() != 0){
       shutters.setLevel(0);
@@ -713,14 +594,12 @@ void click2() {
     client.publish(string2char(topicString), CONST_TRUE);
 } // click2
 
-
 void doubleclick2() {
   Serial.println("Button 2 doubleclick.");
         String topicString = String();
     topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownDblClick_topic);
     client.publish(string2char(topicString), CONST_TRUE);
 } // doubleclick2
-
 
 void longPressStart2() {
   Serial.println("Button 2 longPress start");
@@ -729,26 +608,22 @@ void longPressStart2() {
     client.publish(string2char(topicString), CONST_TRUE);
 } // longPressStart2
 
-								 
-								 
-							   
-								 
-	   
-   
-	  
-		 
-
 void longPress2() {
   Serial.println("Button 2 longPress...");
 } // longPress2
 
+
+
 void longPressStop2() {
+
   Serial.println("Button 2 longPress stop");
 } // longPressStop2
+
 
 char* string2char(String command){
     if(command.length()!=0){
         char *p = const_cast<char*>(command.c_str());
         return p;
     }
+
 }
