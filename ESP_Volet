@@ -24,14 +24,14 @@
 #include <EEPROM.h>
 #include <OneButton.h>
 
-
+bool DisableRazFunction = false; //Disable the raz function with the button
 bool debug = true;  //Affiche sur la console si True
 bool raz = false;   //Réinitialise la zone SPIFFS et WiFiManager si True
 long lastMsg = 0;
 long lastConnect = 0;
 char mqtthost[16] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer l'adresse IP du broker MQTT
 const char* PASS = ""; //A modifier avec le mot de passe voulu, il sera utilise pour les mises a jour OTA
-
+bool isMoving = false; //Indique si les volets sont en mouvement
 char timeCourseup[3] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer le temp de course du volet
 char timeCoursedown[3] = "";
 const byte eepromOffset = 0;
@@ -79,9 +79,9 @@ const int In1pin = 14;
 //ENTREE 2
 const int In2pin = 12;
 // Setup a new OneButton 
-OneButton button1(In1pin, true);
+OneButton button1(In1pin, false);
 // Setup a new OneButton
-OneButton button2(In2pin, true);
+OneButton button2(In2pin, false);
 
 // VARIABLES
 //POSITION
@@ -134,7 +134,9 @@ void onShuttersLevelReached(Shutters* shutters, byte level) {
   Serial.println("%");
   }
   if ((level % 10) == 0) {
-  mqttlevel();  
+  char charlevel[4];
+  sprintf(charlevel, "%d", level); 
+  mqttPublish(position_topic,charlevel); 
   }
 }
 
@@ -296,8 +298,8 @@ if (raz){
 // INITIALYZE GPIO
   pinMode(R1Pin, OUTPUT);
   pinMode(R2pin, OUTPUT);
-  digitalWrite(R1Pin, 0);
-  digitalWrite(R2pin, 0);
+  //digitalWrite(R1Pin, 0);
+  //digitalWrite(R2pin, 0);
 
   char storedShuttersState[shutters.getStateLength()];
   readInEeprom(storedShuttersState, shutters.getStateLength());
@@ -327,6 +329,7 @@ if (raz){
   Serial.println(storedShuttersState);  
 
   Serial.println("Shutter Begin");
+  mqttInit();
   digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready
 }
 
@@ -389,10 +392,13 @@ void reconnect() {
       if (debug){Serial.print("connected depuis :");
       Serial.println(connectedepuis);}
       // Once connected, publish an announcement...
-      client.publish(JeedomIn_topic, String(connectedepuis).c_str());
+      String topicString = String();
+      topicString = String(prefix_topic) + String(ESP8266Client) + String(JeedomIn_topic);
+      client.publish(string2char(topicString), String(connectedepuis).c_str());
       lastConnect = now1;
       // ... and resubscribe
-      client.subscribe(JeedomOut_topic);
+      topicString = String(prefix_topic) + String(ESP8266Client) + String(JeedomOut_topic);
+      client.subscribe(string2char(topicString));
     } else {
   if (debug){    
       Serial.print("Erreur, rc=");
@@ -424,7 +430,7 @@ void loop(void){
   button2.tick();
 
   //Detect the longpress on both button
-  if (button1.isLongPressed() && button2.isLongPressed())
+  if (!DisableRazFunction && button1.isLongPressed() && button2.isLongPressed())
   {
     doubleLongPressStart = millis() - doubleLongPressStart;
     if (doubleLongPressStart > 10*1000) //More the 10 second long Press
@@ -461,61 +467,47 @@ void mqttInit(){
   int levelInt;
   levelInt =  shutters.getCurrentLevel();
   
-  sprintf(level, "%d", levelInt);
-  if (!client.connected()) {
-    reconnect();
-  }
-  else {  
+  sprintf(level, "%d", levelInt); 
     if (debug){
     Serial.println("envoi MQTT d'initialisation");
     }
     mqttPublish(position_topic, level);
-    client.publish(string2char(topicString), level);
-  topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpClick_topic);
-  client.publish(string2char(topicString), CONST_FALSE);
-  topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpLongClick_topic);
-  client.publish(string2char(topicString), CONST_FALSE);
-  topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpDblClick_topic);
-  client.publish(string2char(topicString), CONST_FALSE);
-  topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownClick_topic);
-  client.publish(string2char(topicString), CONST_FALSE);
-  topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownLongClick_topic);
-  client.publish(string2char(topicString), CONST_FALSE);
-  topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownDblClick_topic);
-  client.publish(string2char(topicString), CONST_FALSE);
- }
-}
+    mqttPublish(BtUpClick_topic,CONST_FALSE);
+    mqttPublish(BtUpLongClick_topic,CONST_FALSE);
+    mqttPublish(BtUpDblClick_topic,CONST_FALSE);
+    mqttPublish(BtDownClick_topic,CONST_FALSE);
+    mqttPublish(BtDownLongClick_topic,CONST_FALSE);
+    mqttPublish(BtDownDblClick_topic,CONST_FALSE);
 
-void mqttlevel(){
-  char level[4];
-  sprintf(level, "%d", shutters.getCurrentLevel());
-if (!client.connected()) {
-    reconnect();
-  }
-  else {  
-if (debug){
-   Serial.print("envoi MQTTlevel :");
-   Serial.println(level);
- }
-     client.publish(position_topic, level);
- }
-} 
+}
 
 //***********************************************************************************
 // FONCTIONS MOUVEMENTS VOLET
 void up(){
+  if (debug) {Serial.println("Action up");}
   digitalWrite(R1Pin, 1);
   digitalWrite(R2pin, 0);
+  isMoving = true;
  }
 
 void dwn(){
+  if (debug) {Serial.println("Action down");}
   digitalWrite(R1Pin, 0);
   digitalWrite(R2pin, 1);
+  isMoving = true;
   }
 
 void stp(){
+  if (debug) {Serial.println("Action stop");}
   digitalWrite(R1Pin, 0);
   digitalWrite(R2pin, 0);
+  isMoving = false;
+  char level[4];
+  int levelInt;
+  levelInt =  shutters.getCurrentLevel();
+  
+  sprintf(level, "%d", levelInt); 
+  mqttPublish(position_topic, level);
   }
   
 
@@ -524,40 +516,35 @@ void stp(){
 // ----- button 1 callback functions
 // This function will be called when the button1 was pressed 1 time (and no 2. button press followed).
 void click1() {
- if (shutters.isIdle()){
+
+ if (isMoving){
     if (debug){
-      Serial.print("Click Up Shutter Idle" );    
+      Serial.println("Click Up Shutter Moving" );    
     }
       shutters.stop();
     }
    else{
      if (debug){
-          Serial.print("Click Up Shutter Up" );
+          Serial.println("Click Up Shutter Up" );
      }
               if (shutters.getCurrentLevel() != 100){
     
           shutters.setLevel(100);
      }
    }
-   String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpClick_topic);
-    client.publish(string2char(topicString), CONST_TRUE);
+  mqttPublish(BtUpClick_topic, CONST_TRUE);
 } // click1
 
 // This function will be called when the button1 was pressed 2 times in a short timeframe.
 void doubleclick1() {
   Serial.println("Button 1 doubleclick.");
-     String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpDblClick_topic);
-    client.publish(string2char(topicString), CONST_TRUE);
+    mqttPublish(BtUpDblClick_topic,CONST_TRUE); 
 } // doubleclick1
 
 // This function will be called once, when the button1 is pressed for a long time.
 void longPressStart1() {
   Serial.println("Button 1 longPress start");
-     String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(BtUpLongClick_topic);
-    client.publish(string2char(topicString), CONST_TRUE);
+  mqttPublish(BtUpLongClick_topic,CONST_TRUE); 
 } // longPressStart1
 
 // This function will be called often, while the button1 is pressed for a long time.
@@ -573,39 +560,33 @@ void longPressStop1() {
 // ... and the same for button 2:
 
 void click2() {
- if (shutters.isIdle()){
+ if (isMoving){
     if (debug){
                  
-      Serial.print("Click Down Shutter Idle" );    ;
+      Serial.println("Click Down Shutter Moving" );    ;
     }
       shutters.stop();
     }
    else{
  if (debug){
-      Serial.print("Click Down Shutter Down" );    ;
+      Serial.println("Click Down Shutter Down" );    ;
                  
     }
           if (shutters.getCurrentLevel() != 0){
       shutters.setLevel(0);
    }
    }
-      String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownClick_topic);
-    client.publish(string2char(topicString), CONST_TRUE);
+   mqttPublish(BtDownClick_topic,CONST_TRUE); 
 } // click2
 
 void doubleclick2() {
   Serial.println("Button 2 doubleclick.");
-        String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownDblClick_topic);
-    client.publish(string2char(topicString), CONST_TRUE);
+  mqttPublish(BtDownDblClick_topic,CONST_TRUE); 
 } // doubleclick2
 
 void longPressStart2() {
   Serial.println("Button 2 longPress start");
-    String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(BtDownLongClick_topic);
-    client.publish(string2char(topicString), CONST_TRUE);
+  mqttPublish(BtDownLongClick_topic,CONST_TRUE); 
 } // longPressStart2
 
 void longPress2() {
@@ -627,3 +608,4 @@ char* string2char(String command){
     }
 
 }
+
