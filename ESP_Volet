@@ -1,3 +1,5 @@
+
+
 /* Version du 05/01/2017
 
  * SKETCH fonctionnant sur wemos D1 MINI POUR COMMANDE DE VOLET ROULANT FILAIRE AVEC RENVOI DE LA POSITION DU VOLET EN POURCENTAGE
@@ -23,6 +25,7 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <OneButton.h>
+#include <Ticker.h>
 
 bool DisableRazFunction = false; //Disable the raz function with the button
 bool debug = true;  //Affiche sur la console si True
@@ -40,7 +43,8 @@ unsigned long downCourseTime = 20 * 1000;
 const float calibrationRatio = 0.1;
 char ESP8266Client[20]  = "VR_Empty"; //Default
 int doubleLongPressStart = 0; //Time during double long press
-
+Ticker ticker;
+bool localMode = true;
 //Wifimanager 
          
 //flag for saving data
@@ -49,7 +53,20 @@ bool shouldSaveConfig = false;
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
+  localMode = false;
+  ticker.detach();
 }
+
+void configModeCallback (WiFiManager *myWiFiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  //if you used auto generated SSID, print it
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+  //entered config mode, make led toggle faster
+  localMode = true;
+  ticker.attach(0.05, loopLocalShutter);
+}
+
 
 // NOMAGE MQTT
 //#define relais1_topic "/Relais1"
@@ -149,6 +166,30 @@ Shutters shutters;
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);   
   digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on to indicate the the module is starting
+
+// INITIALYZE GPIO
+  pinMode(R1Pin, OUTPUT);
+  pinMode(R2pin, OUTPUT);
+  //digitalWrite(R1Pin, 0);
+  //digitalWrite(R2pin, 0);
+
+  // link the button 1 functions.
+  button1.attachClick(click1);
+  button1.attachDoubleClick(doubleclick1);
+  button1.attachLongPressStart(longPressStart1);
+  button1.attachLongPressStop(longPressStop1);
+  button1.attachDuringLongPress(longPress1);
+
+  // link the button 2 functions.
+  button2.attachClick(click2);
+  button2.attachDoubleClick(doubleclick2);
+  button2.attachLongPressStart(longPressStart2);
+  button2.attachLongPressStop(longPressStop2);
+  button2.attachDuringLongPress(longPress2);
+
+  
+  localMode = true;
+  ticker.attach(0.05, loopLocalShutter);
   //SERIAL//
   Serial.begin(115200);
   delay(100);
@@ -201,6 +242,7 @@ if (raz){
   //WIFI// 
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.setAPCallback(configModeCallback);
   //Ajout de la variable de configuration MQTT Server (ou Broker)
   WiFiManagerParameter custom_mqtthost("server", "mqtt server", mqtthost, 16);
   WiFiManagerParameter custom_timeCourse_up("time_course_up", "Time Course Up", timeCourseup, 3);
@@ -288,20 +330,9 @@ if (raz){
     configFile.close();
     //end save
   }
-//MQTT//
-  
-  client.setServer(mqtthost, 1883);
-  Serial.print("host MQTT :");
-  Serial.println(mqtthost);
-  client.setCallback(callback);
 
-// INITIALYZE GPIO
-  pinMode(R1Pin, OUTPUT);
-  pinMode(R2pin, OUTPUT);
-  //digitalWrite(R1Pin, 0);
-  //digitalWrite(R2pin, 0);
-
-  char storedShuttersState[shutters.getStateLength()];
+//Shutters //
+ char storedShuttersState[shutters.getStateLength()];
   readInEeprom(storedShuttersState, shutters.getStateLength());
   shutters
     .setOperationHandler(shuttersOperationHandler)
@@ -310,20 +341,14 @@ if (raz){
     .setCourseTime(upCourseTime, downCourseTime)
     .onLevelReached(onShuttersLevelReached)
     .begin();
+  
+//MQTT//
+  
+  client.setServer(mqtthost, 1883);
+  Serial.print("host MQTT :");
+  Serial.println(mqtthost);
+  client.setCallback(callback);
 
-  // link the button 1 functions.
-  button1.attachClick(click1);
-  button1.attachDoubleClick(doubleclick1);
-  button1.attachLongPressStart(longPressStart1);
-  button1.attachLongPressStop(longPressStop1);
-  button1.attachDuringLongPress(longPress1);
-
-  // link the button 2 functions.
-  button2.attachClick(click2);
-  button2.attachDoubleClick(doubleclick2);
-  button2.attachLongPressStart(longPressStart2);
-  button2.attachLongPressStop(longPressStop2);
-  button2.attachDuringLongPress(longPress2);
 
   Serial.print("storedShuttersState :"); 
   Serial.println(storedShuttersState);  
@@ -331,6 +356,8 @@ if (raz){
   Serial.println("Shutter Begin");
   mqttInit();
   digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready
+  localMode = false;
+  ticker.detach();
 }
 
 
@@ -342,8 +369,8 @@ void eraz(){
 if (debug){Serial.println("Réinitialisation de WiFiManager.");}
   wifiManager.resetSettings();
 if (debug){Serial.println("Réinitialisation de la configuration (reset SPIFFS).");}
-  SPIFFS.format();
-ESP.reset();
+  //SPIFFS.format();
+ESP.restart();
 }
 
 // FONCTION communication MQTT JEEDOM VERS ESP
@@ -425,11 +452,17 @@ void loop(void){
   }
   ArduinoOTA.handle();
   client.loop();
+  loopLocalShutter();
+}
+
+//Local shutter management
+void loopLocalShutter()
+{
   shutters.loop();  
   button1.tick();
   button2.tick();
-
-  //Detect the longpress on both button
+  
+   //Detect the longpress on both button
   if (!DisableRazFunction && button1.isLongPressed() && button2.isLongPressed())
   {
     doubleLongPressStart = millis() - doubleLongPressStart;
@@ -446,20 +479,22 @@ void loop(void){
 //***********************************************************************************
 // FONCTION MQTT ESP VERS JEEDOM
 void mqttPublish(char* topic, char* value)
-{
-   if (!client.connected()) {
-    reconnect();
-  }
-  else {  
-    if (debug){
-    Serial.print("envoi MQTT");
-  Serial.print(topic);
-  Serial.print(" : ");
-  Serial.println(value);
+{  
+  if (!localMode){
+     if (!client.connected()) {
+      reconnect();
     }
-   String topicString = String();
-    topicString = String(prefix_topic) + String(ESP8266Client) + String(topic);
-    client.publish(string2char(topicString), value);
+    else {  
+      if (debug){
+      Serial.print("envoi MQTT");
+    Serial.print(topic);
+    Serial.print(" : ");
+    Serial.println(value);
+      }
+     String topicString = String();
+      topicString = String(prefix_topic) + String(ESP8266Client) + String(topic);
+      client.publish(string2char(topicString), value);
+    }
   }
 }
 void mqttInit(){
@@ -504,10 +539,13 @@ void stp(){
   isMoving = false;
   char level[4];
   int levelInt;
-  levelInt =  shutters.getCurrentLevel();
+  if (!localMode) 
+  {
+      levelInt =  shutters.getCurrentLevel();
+      sprintf(level, "%d", levelInt); 
+      mqttPublish(position_topic, level);
+  }
   
-  sprintf(level, "%d", levelInt); 
-  mqttPublish(position_topic, level);
   }
   
 
@@ -521,7 +559,8 @@ void click1() {
     if (debug){
       Serial.println("Click Up Shutter Moving" );    
     }
-      shutters.stop();
+      if (localMode) stp();
+      else shutters.stop();
     }
    else{
      if (debug){
@@ -529,7 +568,8 @@ void click1() {
      }
               if (shutters.getCurrentLevel() != 100){
     
-          shutters.setLevel(100);
+      if (localMode) up();
+      else shutters.setLevel(100);
      }
    }
   mqttPublish(BtUpClick_topic, CONST_TRUE);
@@ -565,7 +605,8 @@ void click2() {
                  
       Serial.println("Click Down Shutter Moving" );    ;
     }
-      shutters.stop();
+      if (localMode) stp();
+      else shutters.stop();
     }
    else{
  if (debug){
@@ -573,7 +614,8 @@ void click2() {
                  
     }
           if (shutters.getCurrentLevel() != 0){
-      shutters.setLevel(0);
+      if (localMode) dwn();
+      else shutters.setLevel(0);
    }
    }
    mqttPublish(BtDownClick_topic,CONST_TRUE); 
@@ -608,4 +650,3 @@ char* string2char(String command){
     }
 
 }
-
