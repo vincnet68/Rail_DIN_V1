@@ -44,7 +44,8 @@ const float calibrationRatio = 0.1;
 char ESP8266Client[20]  = "VR_Empty"; //Default
 int doubleLongPressStart = 0; //Time during double long press
 Ticker ticker;
-bool localMode = true;
+bool localModeOnly = true; //Disable the mqtt send while it is not connected
+bool shutterInitialized = false; //Indicate if the shutter library has been initialized
 //Wifimanager 
          
 //flag for saving data
@@ -53,7 +54,7 @@ bool shouldSaveConfig = false;
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
-  localMode = false;
+  localModeOnly = false;
   ticker.detach();
 }
 
@@ -63,7 +64,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   //if you used auto generated SSID, print it
   Serial.println(myWiFiManager->getConfigPortalSSID());
   //entered config mode, make led toggle faster
-  localMode = true;
+  localModeOnly = true;
   ticker.attach(0.05, loopLocalShutter);
 }
 
@@ -188,7 +189,7 @@ void setup() {
   button2.attachDuringLongPress(longPress2);
 
   
-  localMode = true;
+  localModeOnly = true;
   ticker.attach(0.05, loopLocalShutter);
   //SERIAL//
   Serial.begin(115200);
@@ -332,6 +333,7 @@ if (raz){
   }
 
 //Shutters //
+	stp();//Stop the shutter before initialize
  char storedShuttersState[shutters.getStateLength()];
   readInEeprom(storedShuttersState, shutters.getStateLength());
   shutters
@@ -341,7 +343,7 @@ if (raz){
     .setCourseTime(upCourseTime, downCourseTime)
     .onLevelReached(onShuttersLevelReached)
     .begin();
-  
+  shutterInitialized = true;
 //MQTT//
   
   client.setServer(mqtthost, 1883);
@@ -356,7 +358,7 @@ if (raz){
   Serial.println("Shutter Begin");
   mqttInit();
   digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready
-  localMode = false;
+  localModeOnly = false;
   ticker.detach();
 }
 
@@ -413,8 +415,10 @@ void reconnect() {
   long now1 = millis();
   if (debug){    
     Serial.print("Attente de connexion MQTT...");}
+	digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on to indicate the the module is not Ready
+	ticker.attach(0.05, loopLocalShutter);
     // Attempt to connect
-    if (client.connect(ESP8266Client)) {
+    if (client.connect(ESP8266Client)) {  
       float connectedepuis = (now1 - lastConnect)/1000;
       if (debug){Serial.print("connected depuis :");
       Serial.println(connectedepuis);}
@@ -426,6 +430,8 @@ void reconnect() {
       // ... and resubscribe
       topicString = String(prefix_topic) + String(ESP8266Client) + String(JeedomOut_topic);
       client.subscribe(string2char(topicString));
+	  digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready	
+	  ticker.detach();
     } else {
   if (debug){    
       Serial.print("Erreur, rc=");
@@ -458,7 +464,7 @@ void loop(void){
 //Local shutter management
 void loopLocalShutter()
 {
-  shutters.loop();  
+  if (shutterInitialized) shutters.loop();  
   button1.tick();
   button2.tick();
   
@@ -480,7 +486,7 @@ void loopLocalShutter()
 // FONCTION MQTT ESP VERS JEEDOM
 void mqttPublish(char* topic, char* value)
 {  
-  if (!localMode){
+  if (!localModeOnly){
      if (!client.connected()) {
       reconnect();
     }
@@ -539,7 +545,7 @@ void stp(){
   isMoving = false;
   char level[4];
   int levelInt;
-  if (!localMode) 
+  if (!localModeOnly) 
   {
       levelInt =  shutters.getCurrentLevel();
       sprintf(level, "%d", levelInt); 
@@ -559,7 +565,7 @@ void click1() {
     if (debug){
       Serial.println("Click Up Shutter Moving" );    
     }
-      if (localMode) stp();
+      if (!shutterInitialized) stp();
       else shutters.stop();
     }
    else{
@@ -568,7 +574,7 @@ void click1() {
      }
               if (shutters.getCurrentLevel() != 100){
     
-      if (localMode) up();
+      if (!shutterInitialized) up();
       else shutters.setLevel(100);
      }
    }
@@ -605,7 +611,7 @@ void click2() {
                  
       Serial.println("Click Down Shutter Moving" );    ;
     }
-      if (localMode) stp();
+      if (!shutterInitialized) stp();
       else shutters.stop();
     }
    else{
@@ -614,7 +620,7 @@ void click2() {
                  
     }
           if (shutters.getCurrentLevel() != 0){
-      if (localMode) dwn();
+      if (!shutterInitialized) dwn();
       else shutters.setLevel(0);
    }
    }
