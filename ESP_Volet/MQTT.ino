@@ -52,12 +52,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 //Fonction reconnexion MQTT
 void reconnect() { 
+   localModeOnly = true;
   // Loop until we're reconnected
   long now1 = millis();
   if (debug){    
     Serial.print("Attente de connexion MQTT...");}
   digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on to indicate the the module is not Ready
-  //ticker.attach(0.05, loopLocalShutter);
     // Attempt to connect
     if (client.connect(ESP8266Client)) {  
       float connectedepuis = (now1 - lastConnect)/1000;
@@ -72,7 +72,7 @@ void reconnect() {
       topicString = String(prefix_topic) + String(ESP8266Client) + String(JeedomOut_topic);
       client.subscribe(string2char(topicString));
     digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready  
-    //ticker.detach();
+    localModeOnly = false;
     } else {
   if (debug){    
       Serial.print("Erreur, rc=");
@@ -83,8 +83,9 @@ void reconnect() {
 // FONCTION MQTT ESP VERS JEEDOM
 void mqttPublish(char* topic, char* value)
 {  
-  if (!localModeOnly){
+  if (wificonnected){
      if (!client.connected()) {
+      localModeOnly = true;
       reconnect();
     }
     else {  

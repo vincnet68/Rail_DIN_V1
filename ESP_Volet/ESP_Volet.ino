@@ -34,7 +34,10 @@
 
 
 //Ticker ticker;
-
+ /******** CONSTANTES ********/
+ #define CONST_TRUE "1"
+#define CONST_FALSE "0"
+#define DEFAULT_COURSE_TIME 50
 
 
 
@@ -44,16 +47,18 @@ bool DisableRazFunction = false; //Disable the raz function with the button
 bool debug = true;  //Affiche sur la console si True
 bool raz = false;   //Réinitialise la zone SPIFFS et WiFiManager si True
 char ESP8266Client[20]  = "VR_Empty"; //Nom par défaut du module
-unsigned long upCourseTime = 20 * 1000; //Valeur par défaut du temps de course en montée
-unsigned long downCourseTime = 20 * 1000; //Valeur par défaut du temps de course en descente
+unsigned long upCourseTime = DEFAULT_COURSE_TIME * 1000; //Valeur par défaut du temps de course en montée
+unsigned long downCourseTime = DEFAULT_COURSE_TIME * 1000; //Valeur par défaut du temps de course en descente
 bool isMoving = false; //Indique si les volets sont en mouvement
 char mqtthost[16] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer l'adresse IP du broker MQTT
 bool localModeOnly = true; //Disable the mqtt send while it is not connected
+bool wificonnected = false; //Disable all communication if not connected to Wifi
 bool shutterInitialized = false; //Indicate if the shutter library has been initialized
 WiFiClient espClientVR_Test;  // A renommer pour chaque volets
 PubSubClient client(espClientVR_Test); // A renommer pour chaque volets
 
 Shutters shutters; //shutter librairy
+WiFiManager wifiManager;
 /************* Variables ESP_Volet **************/
 
 long lastMsg = 0; //Utilisé pour le check de la connexion MQTT
@@ -73,8 +78,7 @@ int doubleLongPressStart = 0; //Utilisé pour le temps d'appui
 #define JeedomIn_topic "/in"
 #define JeedomOut_topic "/out"
 #define prefix_topic "Jeedom/"
-#define CONST_TRUE "1"
-#define CONST_FALSE "0"
+
 
 /*************** DEFINITION DES GPIOS ********************/
 //RELAIS 1
@@ -91,13 +95,12 @@ OneButton button1(In1pin, false);
 OneButton button2(In2pin, false);
 
 
-//***********************************************************************************
-// SETUP
-
+//*************** SETUP *****************************
 void setup() {
 
   //Not Ready
   localModeOnly = true;
+  wificonnected = false;
   pinMode(LED_BUILTIN, OUTPUT);   
   digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on to indicate the the module is starting
 
@@ -129,41 +132,26 @@ if (raz){
   setup_ReadSPIFS();
 
 //Start Wifi
-  WiFiManager wifiManager;
+
   setup_WifiManager(wifiManager);
 
  //Start OTA
  setup_OTA();
   
-
-//Shutters //
-	stp();//Stop the shutter before initialize
- char storedShuttersState[shutters.getStateLength()];
-  readInEeprom(storedShuttersState, shutters.getStateLength());
-  shutters
-    .setOperationHandler(shuttersOperationHandler)
-    .setWriteStateHandler(shuttersWriteStateHandler)
-    .restoreState(storedShuttersState)
-    .setCourseTime(upCourseTime, downCourseTime)
-    .onLevelReached(onShuttersLevelReached)
-    .begin();
-  shutterInitialized = true;
+  //Setup Volet
+  setup_Volet();
 
 //Connect MQTT
-setup_mqtt();
+if (wificonnected) setup_mqtt();
 
 if (debug) {
-  Serial.print("storedShuttersState :"); 
-  Serial.println(storedShuttersState);  
-
   Serial.println("Shutter Begin");
 }
 //Send the MQTT
-  mqttInit();
+if (wificonnected) mqttInit();
 
 //device Ready
   digitalWrite(LED_BUILTIN, HIGH);   // Turn the LED off to indicate the the module is Ready
-  localModeOnly = false;
   //ticker.detach();
 }
 
@@ -183,14 +171,20 @@ void loop(void){
   //Serial.println(now);
 
   if (now - lastMsg > 5000) {
+    if (debug) {
+      Serial.print("localModeOnly : ");
+      Serial.print(localModeOnly);
+      Serial.print(" WifiConnected : ");
+      Serial.println(wificonnected);
+    }
     lastMsg = now;
-    if (!client.connected()) {
+    if (wificonnected && !client.connected()) {
       if (debug){Serial.println("client reconnexion");}
       reconnect();       
     }         
   }
   ArduinoOTA.handle();
-  client.loop();
+  if (wificonnected) client.loop();
   loopLocalShutter();
 }
 
@@ -203,8 +197,11 @@ void loopLocalShutter()
   
    //Detect the longpress on both button
   if (!DisableRazFunction && button1.isLongPressed() && button2.isLongPressed())
-  {
-    doubleLongPressStart = millis() - doubleLongPressStart;
+  { if (doubleLongPressStart = 0) 
+      doubleLongPressStart = millis();
+    else
+      doubleLongPressStart = millis() - doubleLongPressStart;
+      
     if (doubleLongPressStart > 10*1000) //More the 10 second long Press
     {
       shutters.stop();

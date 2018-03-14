@@ -9,6 +9,8 @@ void setup_WifiManager (WiFiManager &wifiManager)
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.setAPCallback(configModeCallback);
+  wifiManager.setConfigPortalTimeout(180); //Exit the portal after 3 mintes
+  wifiManager.setConnectTimeout(10); // Stop try to connect after 3 minutes
   //Ajout de la variable de configuration MQTT Server (ou Broker)
   WiFiManagerParameter custom_mqtthost("server", "mqtt server", mqtthost, 16);
   WiFiManagerParameter custom_timeCourse_up("time_course_up", "Time Course Up", timeCourseup, 3);
@@ -19,38 +21,49 @@ void setup_WifiManager (WiFiManager &wifiManager)
   wifiManager.addParameter(&custom_timeCourse_down);
   wifiManager.addParameter(&custom_ESP8266Client);
 
-// on affiche l'adresse IP qui nous a été attribuée
-  Serial.println("");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+ 
 
-  //Lecture de la valeur MQTT server enregistrée dans le fichier de config json
-  strcpy(mqtthost, custom_mqtthost.getValue());
-  strcpy(timeCourseup, custom_timeCourse_up.getValue());
-  upCourseTime = (strtoul (timeCourseup, NULL, 10)) * 1000; //On retype la variable (%ul unsigned long) et on la multiplie par 1000 (ce sont des millisecondes)
-  strcpy(timeCoursedown, custom_timeCourse_down.getValue());
-  downCourseTime = (strtoul (timeCoursedown, NULL, 10)) * 1000;
-  strcpy (ESP8266Client, custom_ESP8266Client.getValue());
-  //Sauvegarde des valeurs dans le fichier de configuration json
-  if (shouldSaveConfig) {
-    Serial.println("saving config");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["mqtthost"] = mqtthost;
-    json["timeCourseup"] = timeCourseup;
-    json["timeCoursedown"] = timeCoursedown;
-    json["ESP8266Client"] = ESP8266Client;
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
-      Serial.println("Erreur lors de l'ouverture du fichier de config json pour enregistrement");
+  if (wifiManager.autoConnect(ESP8266Client, PASS))
+  {
+    wificonnected = true;
+    // on affiche l'adresse IP qui nous a été attribuée
+    if (debug) {
+      Serial.println("");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
     }
-    json.printTo(Serial);
-    json.printTo(configFile);
-    configFile.close();
-    //end save
+    
   }
 
-  wifiManager.autoConnect(ESP8266Client, PASS);
+   //Lecture des valeurs des parametres
+    strcpy(mqtthost, custom_mqtthost.getValue());
+    strcpy(timeCourseup, custom_timeCourse_up.getValue());
+    upCourseTime = (strtoul (timeCourseup, NULL, 10)) * 1000; //On retype la variable (%ul unsigned long) et on la multiplie par 1000 (ce sont des millisecondes)
+    strcpy(timeCoursedown, custom_timeCourse_down.getValue());
+    downCourseTime = (strtoul (timeCoursedown, NULL, 10)) * 1000;
+    strcpy (ESP8266Client, custom_ESP8266Client.getValue());
+      
+    if (shouldSaveConfig) {
+   
+ 
+       //Sauvegarde des valeurs dans le fichier de configuration json
+      Serial.println("saving config");
+      DynamicJsonBuffer jsonBuffer;
+      JsonObject& json = jsonBuffer.createObject();
+      json["mqtthost"] = mqtthost;
+      json["timeCourseup"] = timeCourseup;
+      json["timeCoursedown"] = timeCoursedown;
+      json["ESP8266Client"] = ESP8266Client;
+      File configFile = SPIFFS.open("/config.json", "w");
+      if (!configFile) {
+        Serial.println("Erreur lors de l'ouverture du fichier de config json pour enregistrement");
+      }
+      json.printTo(Serial);
+      json.printTo(configFile);
+      configFile.close();
+      //end save
+    }
+    
 
 //reset settings - for testing
 if (raz){
@@ -101,7 +114,7 @@ void setup_ReadSPIFS()
 
 // FONCTION Reset + Format memoire ESP
 void eraz(){
-  WiFiManager wifiManager;
+ // WiFiManager wifiManager;
 if (debug){Serial.println("Réinitialisation de WiFiManager.");}
   wifiManager.resetSettings();
 if (debug){Serial.println("Réinitialisation de la configuration (reset SPIFFS).");}
@@ -118,8 +131,6 @@ ESP.restart();
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
-  localModeOnly = false;
-  //ticker.detach();
 }
 
 void configModeCallback (WiFiManager *myWiFiManager) {
@@ -129,6 +140,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println(myWiFiManager->getConfigPortalSSID());
   //entered config mode, make led toggle faster
   localModeOnly = true;
+  wificonnected = false;
   //ticker.attach(0.05, loopLocalShutter);
 }
 

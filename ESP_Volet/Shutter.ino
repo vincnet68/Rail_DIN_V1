@@ -5,6 +5,35 @@ const byte eepromOffset = 0; //Zone de départ pour la lecture de EEPROM
 //***********************************************************************************
 // FONCTIONS LIBRAIRIE position volets
 
+
+void setup_Volet()
+{
+  //Shutters //
+  Serial.println("Setup Shutter");
+   char storedShuttersState[shutters.getStateLength()];
+  readInEeprom(storedShuttersState, shutters.getStateLength());
+  if (upCourseTime < 1) upCourseTime = DEFAULT_COURSE_TIME * 1000; //Set a time if not set
+  if (downCourseTime < 1) downCourseTime = DEFAULT_COURSE_TIME * 1000;//Set a time if not set
+
+  if (debug) {
+  Serial.print("storedShuttersState :"); 
+  Serial.println(storedShuttersState);  
+  Serial.print("upCourseTime :"); 
+  Serial.println(upCourseTime);
+  Serial.print("downCourseTime :"); 
+  Serial.println(downCourseTime);
+  }
+   shutters
+    .setOperationHandler(shuttersOperationHandler)
+    .setWriteStateHandler(shuttersWriteStateHandler)
+    .restoreState(storedShuttersState)
+    .setCourseTime(upCourseTime, downCourseTime)
+    .onLevelReached(onShuttersLevelReached)
+    .begin();
+  shutterInitialized = true;
+
+}
+
 void shuttersOperationHandler(Shutters* s, ShuttersOperation operation) {
   switch (operation) {
     case ShuttersOperation::UP:

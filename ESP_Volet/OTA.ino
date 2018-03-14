@@ -2,6 +2,7 @@
 
 void setup_OTA()
 {
+  Serial.println("Setup OTA");
    // Configuration OTA
   //Port 8266 (defaut)
   ArduinoOTA.setPort(8266);
