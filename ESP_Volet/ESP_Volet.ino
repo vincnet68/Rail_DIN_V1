@@ -32,32 +32,33 @@
 #include <OneButton.h>
 #include <Ticker.h>
 
-/**************** Variables ********************************/
+
+//Ticker ticker;
+
+
+
+
+
+/************** Variables globales *******************/
 bool DisableRazFunction = false; //Disable the raz function with the button
 bool debug = true;  //Affiche sur la console si True
 bool raz = false;   //Réinitialise la zone SPIFFS et WiFiManager si True
-long lastMsg = 0;
-long lastConnect = 0;
-char mqtthost[16] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer l'adresse IP du broker MQTT
-const char* PASS = ""; //A modifier avec le mot de passe voulu, il sera utilise pour les mises a jour OTA
+char ESP8266Client[20]  = "VR_Empty"; //Nom par défaut du module
+unsigned long upCourseTime = 20 * 1000; //Valeur par défaut du temps de course en montée
+unsigned long downCourseTime = 20 * 1000; //Valeur par défaut du temps de course en descente
 bool isMoving = false; //Indique si les volets sont en mouvement
-char timeCourseup[3] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer le temp de course du volet
-char timeCoursedown[3] = "";
-const byte eepromOffset = 0;
-unsigned long upCourseTime = 20 * 1000; //Valeur par défaut du temps de course en montée, un temps de course de descente peut aussi être défini
-unsigned long downCourseTime = 20 * 1000;
-const float calibrationRatio = 0.1;
-char ESP8266Client[20]  = "VR_Empty"; //Default
-int doubleLongPressStart = 0; //Time during double long press
-Ticker ticker;
+char mqtthost[16] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer l'adresse IP du broker MQTT
 bool localModeOnly = true; //Disable the mqtt send while it is not connected
 bool shutterInitialized = false; //Indicate if the shutter library has been initialized
-bool shouldSaveConfig = false; //flag for saving data
-Shutters shutters;
-
-char message_buff[100];
 WiFiClient espClientVR_Test;  // A renommer pour chaque volets
 PubSubClient client(espClientVR_Test); // A renommer pour chaque volets
+
+Shutters shutters; //shutter librairy
+/************* Variables ESP_Volet **************/
+
+long lastMsg = 0; //Utilisé pour le check de la connexion MQTT
+int doubleLongPressStart = 0; //Utilisé pour le temps d'appui 
+
 
 /********************** NOMAGE MQTT*******************/
 #define relais1_topic "/Relais1"
@@ -182,8 +183,6 @@ void loop(void){
   //Serial.println(now);
 
   if (now - lastMsg > 5000) {
-    //Serial.println(" now :");
-    //Serial.println(now);
     lastMsg = now;
     if (!client.connected()) {
       if (debug){Serial.println("client reconnexion");}
@@ -214,13 +213,6 @@ void loopLocalShutter()
  }
   else
     doubleLongPressStart = millis();
-}
-
-//********************* FONCTIONS DIVERS*********************
-void readInEeprom(char* dest, byte length) {
-  for (byte i = 0; i < length; i++) {
-    dest[i] = EEPROM.read(eepromOffset + i);
-  }
 }
 
 

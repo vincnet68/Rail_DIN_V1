@@ -1,3 +1,8 @@
+/**************** Variables ********************************/
+char timeCourseup[3] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer le temp de course du volet
+char timeCoursedown[3] = ""; //Variable qui sera utilisée par WiFiManager pour enregistrer le temp de course du volet
+bool shouldSaveConfig = false; //flag for saving data
+
 void setup_WifiManager (WiFiManager &wifiManager)
 {
   //WIFI// 

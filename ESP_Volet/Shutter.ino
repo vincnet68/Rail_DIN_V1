@@ -1,3 +1,6 @@
+/**************** Variables ********************************/
+const byte eepromOffset = 0; //Zone de départ pour la lecture de EEPROM
+
 
 //***********************************************************************************
 // FONCTIONS LIBRAIRIE position volets
@@ -39,6 +42,15 @@ void shuttersWriteStateHandler(Shutters* shutters, const char* state, byte lengt
     #endif
   }
 }
+
+
+//********************* FONCTIONS DIVERS*********************
+void readInEeprom(char* dest, byte length) {
+  for (byte i = 0; i < length; i++) {
+    dest[i] = EEPROM.read(eepromOffset + i);
+  }
+}
+
 
 void onShuttersLevelReached(Shutters* shutters, byte level) {
   if (debug){

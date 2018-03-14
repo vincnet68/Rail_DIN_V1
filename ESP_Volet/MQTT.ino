@@ -1,3 +1,8 @@
+/**************** Variables ********************************/
+
+long lastConnect = 0; //Utilisé pour le temps de connexion MQTT
+char message_buff[100];
+
 void setup_mqtt()
 {
 //MQTT//
