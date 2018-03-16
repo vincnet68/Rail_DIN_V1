@@ -1,4 +1,4 @@
-
+//const char* pass PASS = "";  à déclarer 
 
 /* Version du 10/03/2018 par vincnet68
 
@@ -111,10 +111,12 @@ void setup() {
   #ifdef ESP8266
   EEPROM.begin(512);
   #endif
-  Serial.println();
-  Serial.println("*** Starting ***");
-  Serial.println(ESP8266Client);                
-
+  if (debug) {
+    Serial.println();
+    Serial.println("*** Starting ***");
+    Serial.println(ESP8266Client);                
+  }
+  
 // INITIALYZE GPIO
   pinMode(R1Pin, OUTPUT);
   pinMode(R2pin, OUTPUT);
@@ -171,12 +173,12 @@ void loop(void){
   //Serial.println(now);
 
   if (now - lastMsg > 5000) {
-    if (debug) {
+   /* if (debug) {
       Serial.print("localModeOnly : ");
       Serial.print(localModeOnly);
       Serial.print(" WifiConnected : ");
       Serial.println(wificonnected);
-    }
+    }*/
     lastMsg = now;
     if (wificonnected && !client.connected()) {
       if (debug){Serial.println("client reconnexion");}

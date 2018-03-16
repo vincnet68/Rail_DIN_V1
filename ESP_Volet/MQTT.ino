@@ -8,8 +8,10 @@ void setup_mqtt()
 //MQTT//
   
   client.setServer(mqtthost, 1883);
-  Serial.print("host MQTT :");
-  Serial.println(mqtthost);
+  if (debug) {
+    Serial.print("host MQTT :");
+    Serial.println(mqtthost);
+  }
   client.setCallback(callback);
 }
 
@@ -106,6 +108,11 @@ void mqttInit(){
   int levelInt;
   levelInt =  shutters.getCurrentLevel();
   
+  if (wificonnected && !client.connected()) {
+      if (debug){Serial.println("client reconnexion");}
+      reconnect();       
+    }      
+    
   sprintf(level, "%d", levelInt); 
     if (debug){
     Serial.println("envoi MQTT d'initialisation");
