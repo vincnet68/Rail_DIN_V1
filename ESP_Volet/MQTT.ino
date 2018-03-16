@@ -68,7 +68,7 @@ void reconnect() {
       // Once connected, publish an announcement...
       String topicString = String();
       topicString = String(prefix_topic) + String(ESP8266Client) + String(JeedomIn_topic);
-      client.publish(string2char(topicString), String(connectedepuis).c_str());
+      client.publish(string2char(topicString), string2char(VERSION));
       lastConnect = now1;
       // ... and resubscribe
       topicString = String(prefix_topic) + String(ESP8266Client) + String(JeedomOut_topic);
