@@ -4,14 +4,11 @@
  * HARD Module sur Rail DIN (Alcor_fr et Rolrider): https://www.jeedom.com/forum/viewtopic.php?f=185&t=25017&sid=c757bad46d600f07820dab2a45ec8b33
  * LIBRAIRIES : https://github.com/marvinroger/arduino-shutters
  *              https://github.com/mathertel/OneButton
- *              https://github.com/esp8266/Arduino/blob/master/libraries/Ticker/Ticker.h
- * AJOUT de l'OTA 
- * AJOUT de WiFiManager
  * Possibilité d'enregistrer l'adresse IP de son broker MQTT
  * Possibilité d'enregistrer le temp de course
- * Possibilité d'enregistrer le nom du module (utilisé pour le WifiManager portal, et la publication MQTT)
+ * Possibilité d'enregistrer le nom du module (utilisé pour le WifiManager portal, l'OTA et la publication MQTT)
  * Utilisation de 2 boutons poussoir pour la commande (commande local, et envoie de double click et long click par MQTT)
- * Utilisation de la lib Tick pour garder les commandes local disponible même en cas de déconnection wifi ou MQTT
+ * Module démarre avec uniquement les commandes locale (bouton sans MQTT) si les 2 timeout du wifimanager sont dépassés 
  */
 #include <FS.h>
 #include <Shutters.h>
@@ -36,13 +33,13 @@
  #define CONST_TRUE "1"
 #define CONST_FALSE "0"
 #define DEFAULT_COURSE_TIME 50
-#define VERSION "1.0.0- 16.03.2018"
+#define VERSION "Volet 1.0.1- 19.03.2018"
 
 
 
 /************** Variables globales *******************/
 bool DisableRazFunction = false; //Disable the raz function with the button
-bool debug = true;  //Affiche sur la console si True
+bool debug = false;  //Affiche sur la console si True
 bool raz = false;   //Réinitialise la zone SPIFFS et WiFiManager si True
 char ESP8266Client[20]  = "VR_Empty"; //Nom par défaut du module
 unsigned long upCourseTime = DEFAULT_COURSE_TIME * 1000; //Valeur par défaut du temps de course en montée
