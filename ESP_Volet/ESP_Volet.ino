@@ -39,7 +39,7 @@
 
 /************** Variables globales *******************/
 bool DisableRazFunction = false; //Disable the raz function with the button
-bool debug = false;  //Affiche sur la console si True
+bool debug = true;  //Affiche sur la console si True
 bool raz = false;   //Réinitialise la zone SPIFFS et WiFiManager si True
 char ESP8266Client[20]  = "VR_Empty"; //Nom par défaut du module
 unsigned long upCourseTime = DEFAULT_COURSE_TIME * 1000; //Valeur par défaut du temps de course en montée
@@ -206,7 +206,7 @@ void loopLocalShutter()
     }
  }
   else
-    doubleLongPressStart = millis();
+    doubleLongPressStart = 0;
 }
 
 
