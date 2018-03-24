@@ -1,1 +1,1 @@
-const char* PASS = ""; 
+const char* PASS = "Jeedom"; 

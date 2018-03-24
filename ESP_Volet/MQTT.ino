@@ -35,7 +35,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
    uint8_t niv = msgString.toInt();
    
-  if (niv >= 0 && niv <= 100 &&  msgString != "up" && msgString != "dwn" && msgString != "stp" && msgString != "raz" && msgString != "shutraz"){
+  if (niv >= 0 && niv <= 100 &&  msgString != "up" && msgString != "dwn" && msgString != "stp" && msgString != "raz" && msgString != "shutraz" && msgString != "reboot"){
     shutters.setLevel(niv);
   }
     else if ( msgString == "up" ) {
@@ -48,6 +48,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
   eraz();
   } else if ( msgString == "shutraz" ){
   shutterRaz();
+  } else if ( msgString == "reboot" ){
+  ESP.restart();
   }
 }
 

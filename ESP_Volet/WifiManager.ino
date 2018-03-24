@@ -10,7 +10,7 @@ void setup_WifiManager (WiFiManager &wifiManager)
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setConfigPortalTimeout(180); //Exit the portal after 3 mintes
-  wifiManager.setConnectTimeout(10); // Stop try to connect after 3 minutes
+  wifiManager.setConnectTimeout(60); // Stop try to connect after 3 minutes
   //Ajout de la variable de configuration MQTT Server (ou Broker)
   WiFiManagerParameter custom_mqtthost("server", "mqtt server", mqtthost, 16);
   WiFiManagerParameter custom_timeCourse_up("time_course_up", "Time Course Up", timeCourseup, 3);

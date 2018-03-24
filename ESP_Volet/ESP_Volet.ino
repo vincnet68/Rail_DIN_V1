@@ -1,4 +1,4 @@
-/* Version du 16/03/2018 par vincnet68
+/* Version du 24/03/2018 par vincnet68
 
  * SKETCH fonctionnant sur wemos D1 MINI POUR COMMANDE DE VOLET ROULANT FILAIRE AVEC RENVOI DE LA POSITION DU VOLET EN POURCENTAGE
  * HARD Module sur Rail DIN (Alcor_fr et Rolrider): https://www.jeedom.com/forum/viewtopic.php?f=185&t=25017&sid=c757bad46d600f07820dab2a45ec8b33
@@ -28,7 +28,6 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <OneButton.h>
-#include <Ticker.h>
 
 
 //Ticker ticker;
@@ -36,7 +35,7 @@
  #define CONST_TRUE "1"
 #define CONST_FALSE "0"
 #define DEFAULT_COURSE_TIME 50
-#define VERSION "1.0.0- 16.03.2018"
+#define VERSION "1.0.1- 23.03.2018"
 
 
 
@@ -75,7 +74,7 @@ int doubleLongPressStart = 0; //Utilisé pour le temps d'appui
 #define BtDownDblClick_topic "/BtDownDblClick"
 #define JeedomIn_topic "/in"
 #define JeedomOut_topic "/out"
-#define prefix_topic "Jeedom/"
+#define prefix_topic "Volet/"
 
 
 /*************** DEFINITION DES GPIOS ********************/
