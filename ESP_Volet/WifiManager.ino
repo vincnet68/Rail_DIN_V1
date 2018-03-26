@@ -5,7 +5,7 @@ bool shouldSaveConfig = false; //flag for saving data
 
 void setup_WifiManager (WiFiManager &wifiManager)
 {
-  //WIFI// 
+  //WIFI//
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.setAPCallback(configModeCallback);
@@ -21,7 +21,7 @@ void setup_WifiManager (WiFiManager &wifiManager)
   wifiManager.addParameter(&custom_timeCourse_down);
   wifiManager.addParameter(&custom_ESP8266Client);
 
- 
+
 
   if (wifiManager.autoConnect(ESP8266Client, PASS))
   {
@@ -32,7 +32,7 @@ void setup_WifiManager (WiFiManager &wifiManager)
       Serial.print("IP address: ");
       Serial.println(WiFi.localIP());
     }
-    
+
   }
 
    //Lecture des valeurs des parametres
@@ -42,10 +42,10 @@ void setup_WifiManager (WiFiManager &wifiManager)
     strcpy(timeCoursedown, custom_timeCourse_down.getValue());
     downCourseTime = (strtoul (timeCoursedown, NULL, 10)) * 1000;
     strcpy (ESP8266Client, custom_ESP8266Client.getValue());
-      
+
     if (shouldSaveConfig) {
-   
- 
+
+
        //Sauvegarde des valeurs dans le fichier de configuration json
       Serial.println("saving config");
       DynamicJsonBuffer jsonBuffer;
@@ -63,7 +63,7 @@ void setup_WifiManager (WiFiManager &wifiManager)
       configFile.close();
       //end save
     }
-    
+
 
 //reset settings - for testing
 if (raz){
@@ -143,5 +143,3 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   wificonnected = false;
   //ticker.attach(0.05, loopLocalShutter);
 }
-
-

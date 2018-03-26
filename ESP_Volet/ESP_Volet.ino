@@ -4,14 +4,11 @@
  * HARD Module sur Rail DIN (Alcor_fr et Rolrider): https://www.jeedom.com/forum/viewtopic.php?f=185&t=25017&sid=c757bad46d600f07820dab2a45ec8b33
  * LIBRAIRIES : https://github.com/marvinroger/arduino-shutters
  *              https://github.com/mathertel/OneButton
- *              https://github.com/esp8266/Arduino/blob/master/libraries/Ticker/Ticker.h
- * AJOUT de l'OTA 
- * AJOUT de WiFiManager
  * Possibilité d'enregistrer l'adresse IP de son broker MQTT
  * Possibilité d'enregistrer le temp de course
- * Possibilité d'enregistrer le nom du module (utilisé pour le WifiManager portal, et la publication MQTT)
+ * Possibilité d'enregistrer le nom du module (utilisé pour le WifiManager portal, l'OTA et la publication MQTT)
  * Utilisation de 2 boutons poussoir pour la commande (commande local, et envoie de double click et long click par MQTT)
- * Utilisation de la lib Tick pour garder les commandes local disponible même en cas de déconnection wifi ou MQTT
+ * Module démarre avec uniquement les commandes locale (bouton sans MQTT) si les 2 timeout du wifimanager sont dépassés
  */
 #include <FS.h>
 #include <Shutters.h>
@@ -59,7 +56,7 @@ WiFiManager wifiManager;
 /************* Variables ESP_Volet **************/
 
 long lastMsg = 0; //Utilisé pour le check de la connexion MQTT
-int doubleLongPressStart = 0; //Utilisé pour le temps d'appui 
+int doubleLongPressStart = 0; //Utilisé pour le temps d'appui
 
 
 /********************** NOMAGE MQTT*******************/
@@ -86,7 +83,7 @@ const int R2pin = 5;
 const int In1pin = 14;
 //ENTREE 2
 const int In2pin = 12;
-// Setup a new OneButton 
+// Setup a new OneButton
 OneButton button1(In1pin, false);
 // Setup a new OneButton
 OneButton button2(In2pin, false);
@@ -98,7 +95,7 @@ void setup() {
   //Not Ready
   localModeOnly = true;
   wificonnected = false;
-  pinMode(LED_BUILTIN, OUTPUT);   
+  pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on to indicate the the module is starting
 
 
@@ -111,16 +108,16 @@ void setup() {
   if (debug) {
     Serial.println();
     Serial.println("*** Starting ***");
-    Serial.println(ESP8266Client);                
+    Serial.println(ESP8266Client);
   }
-  
+
 // INITIALYZE GPIO
   pinMode(R1Pin, OUTPUT);
   pinMode(R2pin, OUTPUT);
 
 //Setup Button
   setup_button();
-  
+
  //RAZ SPIFS used for debugging
 if (raz){
   Serial.println("Réinitialisation de la configuration (reset SPIFFS).");
@@ -136,7 +133,7 @@ if (raz){
 
  //Start OTA
  setup_OTA();
-  
+
   //Setup Volet
   setup_Volet();
 
@@ -179,8 +176,8 @@ void loop(void){
     lastMsg = now;
     if (wificonnected && !client.connected()) {
       if (debug){Serial.println("client reconnexion");}
-      reconnect();       
-    }         
+      reconnect();
+    }
   }
   ArduinoOTA.handle();
   if (wificonnected) client.loop();
@@ -190,17 +187,17 @@ void loop(void){
 //Local shutter management
 void loopLocalShutter()
 {
-  if (shutterInitialized) shutters.loop();  
+  if (shutterInitialized) shutters.loop();
   button1.tick();
   button2.tick();
-  
+
    //Detect the longpress on both button
   if (!DisableRazFunction && button1.isLongPressed() && button2.isLongPressed())
-  { if (doubleLongPressStart = 0) 
+  { if (doubleLongPressStart = 0)
       doubleLongPressStart = millis();
     else
       doubleLongPressStart = millis() - doubleLongPressStart;
-      
+
     if (doubleLongPressStart > 10*1000) //More the 10 second long Press
     {
       shutters.stop();
@@ -208,7 +205,7 @@ void loopLocalShutter()
     }
  }
   else
-    doubleLongPressStart = millis();
+    doubleLongPressStart = 0;
 }
 
 
@@ -243,18 +240,18 @@ void stp(){
   isMoving = false;
   char level[4];
   int levelInt;
-  if (!localModeOnly) 
+  if (!localModeOnly)
   {
       levelInt =  shutters.getCurrentLevel();
-      sprintf(level, "%d", levelInt); 
+      sprintf(level, "%d", levelInt);
       mqttPublish(position_topic, level);
       mqttPublish(relais1_topic, CONST_FALSE);
       mqttPublish(relais2_topic, CONST_FALSE);
-      
+
   }
-  
+
   }
-  
+
 
 char* string2char(String command){
     if(command.length()!=0){
