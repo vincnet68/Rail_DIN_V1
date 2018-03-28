@@ -32,7 +32,7 @@
  #define CONST_TRUE "1"
 #define CONST_FALSE "0"
 #define DEFAULT_COURSE_TIME 50
-#define VERSION "1.0.1- 23.03.2018"
+#define VERSION "1.0.2- 28.03.2018"
 
 
 
@@ -193,13 +193,14 @@ void loopLocalShutter()
 
    //Detect the longpress on both button
   if (!DisableRazFunction && button1.isLongPressed() && button2.isLongPressed())
-  { if (doubleLongPressStart = 0)
-      doubleLongPressStart = millis();
-    else
-      doubleLongPressStart = millis() - doubleLongPressStart;
-
-    if (doubleLongPressStart > 10*1000) //More the 10 second long Press
+  { if (doubleLongPressStart == 0)
+  {
+    doubleLongPressStart = millis();
+  }
+      
+    if ( millis() - doubleLongPressStart > 10*1000) //More the 10 second long Press
     {
+      if (debug) {Serial.println("DoubleLongpress  Raz and Restart");}
       shutters.stop();
      eraz();
     }

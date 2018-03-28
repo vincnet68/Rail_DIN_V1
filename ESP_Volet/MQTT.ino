@@ -126,6 +126,8 @@ void mqttInit(){
     mqttPublish(BtDownClick_topic,CONST_FALSE);
     mqttPublish(BtDownLongClick_topic,CONST_FALSE);
     mqttPublish(BtDownDblClick_topic,CONST_FALSE);
+    mqttPublish(relais1_topic,CONST_FALSE);
+    mqttPublish(relais1_topic,CONST_FALSE);
 
 }
 
