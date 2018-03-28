@@ -7,6 +7,8 @@ void setup_WifiManager (WiFiManager &wifiManager)
 {
   //WIFI//
 
+  wifiManager.setDebugOutput(true);
+
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setConfigPortalTimeout(180); //Exit the portal after 3 mintes
@@ -20,7 +22,6 @@ void setup_WifiManager (WiFiManager &wifiManager)
   wifiManager.addParameter(&custom_timeCourse_up);
   wifiManager.addParameter(&custom_timeCourse_down);
   wifiManager.addParameter(&custom_ESP8266Client);
-
 
 
   if (wifiManager.autoConnect(ESP8266Client, PASS))
